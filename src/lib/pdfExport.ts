@@ -204,5 +204,6 @@ export function exportToPDF(metadata: ScriptMetadata, blocks: ScriptBlock[]) {
     }
   }
 
-  doc.save(`${metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'screenplay'}.pdf`);
+  const versionStr = metadata.version ? `_v${metadata.version}` : '';
+  doc.save(`${metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'screenplay'}${versionStr}.pdf`);
 }

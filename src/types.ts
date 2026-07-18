@@ -17,4 +17,5 @@ export interface ScriptMetadata {
   revisions?: string;
   watermark?: string;
   coverImage?: string;
+  version?: number;
 }

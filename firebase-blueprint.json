@@ -1,0 +1,55 @@
+{
+  "collections": {
+    "users": {
+      "description": "User profiles",
+      "fields": {
+        "email": {
+          "type": "string",
+          "description": "User email"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the user was created"
+        }
+      },
+      "rules": {
+        "read": "request.auth != null && request.auth.uid == resource.id",
+        "write": "request.auth != null && request.auth.uid == resource.id"
+      }
+    },
+    "projects": {
+      "description": "Screenplay projects",
+      "fields": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this project"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the project"
+        },
+        "metadata": {
+          "type": "map",
+          "description": "Script metadata"
+        },
+        "blocks": {
+          "type": "list",
+          "description": "Array of script blocks"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the project was created"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "description": "When the project was last updated"
+        }
+      },
+      "rules": {
+        "read": "request.auth != null && request.auth.uid == resource.data.userId",
+        "write": "request.auth != null && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid)",
+        "create": "request.auth != null && request.resource.data.userId == request.auth.uid"
+      }
+    }
+  }
+}

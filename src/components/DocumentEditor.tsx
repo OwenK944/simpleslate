@@ -38,7 +38,7 @@ export function DocumentEditor() {
 }
 
 function BlockItem({ block, index }: { key?: string; block: ScriptBlock; index: number }) {
-  const { updateBlock, deleteBlock, addBlock, autoScroll, showTypeColors, selectedBlockId, setSelectedBlockId } = useSlateStore();
+  const { updateBlock, deleteBlock, addBlock, autoScroll, showTypeColors, selectedBlockId, setSelectedBlockId, spellCheck } = useSlateStore();
   const controls = useDragControls();
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,7 +148,7 @@ function BlockItem({ block, index }: { key?: string; block: ScriptBlock; index: 
           onClick={(e) => { e.stopPropagation(); setSelectedBlockId(block.id); }}
           className="w-full bg-transparent resize-none focus:outline-none focus:bg-slate-card/60 rounded-sm transition-colors py-0.5"
           rows={block.content.split('\n').length}
-          spellCheck={false}
+          spellCheck={spellCheck}
           style={{ 
             height: 'auto',
             overflow: 'hidden'

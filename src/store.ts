@@ -12,6 +12,11 @@ interface SlateStore {
   focusMode: boolean;
   hasSeenSaveIndicator: boolean;
   selectedBlockId: string | null;
+  view: 'welcome' | 'dashboard' | 'editor';
+  currentProjectId: string | null;
+  lastLocalSave: number;
+  showScriptSetup: boolean;
+  spellCheck: boolean;
   
   // Actions
   setMetadata: (metadata: Partial<ScriptMetadata>) => void;
@@ -27,12 +32,18 @@ interface SlateStore {
   setFocusMode: (focus: boolean) => void;
   setHasSeenSaveIndicator: (seen: boolean) => void;
   setSelectedBlockId: (id: string | null) => void;
+  setView: (view: 'welcome' | 'dashboard' | 'editor') => void;
+  setCurrentProjectId: (id: string | null) => void;
+  setLastLocalSave: (time: number) => void;
+  setShowScriptSetup: (show: boolean) => void;
+  setSpellCheck: (enabled: boolean) => void;
 }
 
 const defaultMetadata: ScriptMetadata = {
   title: 'UNTITLED SCREENPLAY',
   author: 'Author Name',
   draftDate: new Date().toLocaleDateString(),
+  version: 1
 };
 
 export const useSlateStore = create<SlateStore>()(
@@ -46,9 +57,17 @@ export const useSlateStore = create<SlateStore>()(
         focusMode: false,
         hasSeenSaveIndicator: false,
         selectedBlockId: null,
+        view: 'welcome',
+        currentProjectId: null,
+        showScriptSetup: false,
+        spellCheck: true,
+        lastLocalSave: Date.now(),
         
+        setSpellCheck: (enabled) => set({ spellCheck: enabled }),
+
         setMetadata: (metadata) => set((state) => ({ 
-          metadata: { ...state.metadata, ...metadata } 
+          metadata: { ...state.metadata, ...metadata },
+          lastLocalSave: Date.now()
         })),
         
         addBlock: (block, index) => set((state) => {
@@ -59,18 +78,20 @@ export const useSlateStore = create<SlateStore>()(
           } else {
             newBlocks.push(newBlock);
           }
-          return { blocks: newBlocks };
+          return { blocks: newBlocks, lastLocalSave: Date.now() };
         }),
         
         updateBlock: (id, updates) => set((state) => ({
-          blocks: state.blocks.map(b => b.id === id ? { ...b, ...updates } : b)
+          blocks: state.blocks.map(b => b.id === id ? { ...b, ...updates } : b),
+          lastLocalSave: Date.now()
         })),
         
         deleteBlock: (id) => set((state) => ({
-          blocks: state.blocks.filter(b => b.id !== id)
+          blocks: state.blocks.filter(b => b.id !== id),
+          lastLocalSave: Date.now()
         })),
         
-        reorderBlocks: (newBlocks) => set({ blocks: newBlocks }),
+        reorderBlocks: (newBlocks) => set({ blocks: newBlocks, lastLocalSave: Date.now() }),
 
         moveScene: (sceneId, targetSceneId) => set((state) => {
           if (sceneId === targetSceneId) return { blocks: state.blocks };
@@ -98,18 +119,21 @@ export const useSlateStore = create<SlateStore>()(
           // Wait, Reorder components usually give the new order.
           blocks.splice(newTargetIndex >= 0 ? newTargetIndex : blocks.length, 0, ...sceneBlocks);
           
-          return { blocks };
+          return { blocks, lastLocalSave: Date.now() };
         }),
         
-        loadScript: (metadata, blocks) => set({ metadata, blocks }),
+        loadScript: (metadata, blocks) => set({ metadata, blocks, lastLocalSave: Date.now() }),
         
-        clearScript: () => set({ metadata: defaultMetadata, blocks: [] }),
-
+        clearScript: () => set({ metadata: defaultMetadata, blocks: [], lastLocalSave: Date.now() }),
         toggleAutoScroll: () => set((state) => ({ autoScroll: !state.autoScroll })),
         setShowTypeColors: (show) => set({ showTypeColors: show }),
         setFocusMode: (focus) => set({ focusMode: focus }),
         setHasSeenSaveIndicator: (seen) => set({ hasSeenSaveIndicator: seen }),
-        setSelectedBlockId: (id) => set({ selectedBlockId: id })
+        setSelectedBlockId: (id) => set({ selectedBlockId: id }),
+        setView: (view) => set({ view }),
+        setCurrentProjectId: (id) => set({ currentProjectId: id }),
+        setLastLocalSave: (time) => set({ lastLocalSave: time }),
+        setShowScriptSetup: (show) => set({ showScriptSetup: show })
       }),
       {
         partialize: (state) => {
@@ -127,7 +151,9 @@ export const useSlateStore = create<SlateStore>()(
         blocks: state.blocks,
         autoScroll: state.autoScroll,
         showTypeColors: state.showTypeColors,
-        hasSeenSaveIndicator: state.hasSeenSaveIndicator
+        hasSeenSaveIndicator: state.hasSeenSaveIndicator,
+        currentProjectId: state.currentProjectId,
+        lastLocalSave: state.lastLocalSave
       })
     }
   )

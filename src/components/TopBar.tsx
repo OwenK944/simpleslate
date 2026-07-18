@@ -1,16 +1,18 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSlateStore } from '../store';
+import { useAuthStore } from '../lib/auth';
+import { updateProject, createProject } from '../lib/projects';
 import { calculateStats } from '../lib/utils';
 import { exportToPDF } from '../lib/pdfExport';
 import { Download, FileUp, File as FileIcon, Settings, Save, FileText, Plus, Undo2, Redo2, Eye, Type, X, Film, GripVertical, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function TopBar() {
-  const { blocks, metadata, setMetadata, loadScript, clearScript, autoScroll, toggleAutoScroll, showTypeColors, setShowTypeColors, focusMode, setFocusMode, hasSeenSaveIndicator, setHasSeenSaveIndicator } = useSlateStore();
+  const { blocks, metadata, setMetadata, loadScript, clearScript, autoScroll, toggleAutoScroll, showTypeColors, setShowTypeColors, focusMode, setFocusMode, hasSeenSaveIndicator, setHasSeenSaveIndicator, currentProjectId, setView, setCurrentProjectId, showScriptSetup, setShowScriptSetup } = useSlateStore();
+  const { user } = useAuthStore();
   const { undo, redo, pastStates, futureStates } = useSlateStore.temporal.getState();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { pages, minutes } = calculateStats(blocks);
-  const [showMeta, setShowMeta] = useState(false);
   const [showNewWarning, setShowNewWarning] = useState(false);
   
   const [activeMenu, setActiveMenu] = useState<'file' | 'edit' | 'options' | null>(null);
@@ -63,6 +65,31 @@ export function TopBar() {
     setActiveMenu(null);
   };
 
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const handleSaveToCloud = async () => {
+    if (!user) return;
+    setIsSavingCloud(true);
+    
+    const newVersion = (metadata.version || 1) + 1;
+    const updatedMetadata = { ...metadata, version: newVersion };
+    setMetadata({ version: newVersion });
+
+    try {
+      if (currentProjectId) {
+        await updateProject(currentProjectId, updatedMetadata, blocks);
+      } else {
+        const newId = await createProject(user.uid, updatedMetadata, blocks);
+        setCurrentProjectId(newId);
+      }
+      setLastSaveLength(blocks.length);
+    } catch (e: any) {
+      alert("Failed to save to cloud: " + e.message);
+    } finally {
+      setIsSavingCloud(false);
+      setActiveMenu(null);
+    }
+  };
+
   const handleLoadSlate = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,6 +101,7 @@ export function TopBar() {
         if (json.metadata && json.blocks) {
           useSlateStore.temporal.getState().clear();
           loadScript(json.metadata, json.blocks);
+          setCurrentProjectId(null); // Clear cloud link
           setLastSaveLength(json.blocks.length);
         }
       } catch (error) {
@@ -111,13 +139,13 @@ export function TopBar() {
           </div>
           
           <div className="flex items-center gap-1">
-            {/* FILE MENU */}
+            {/* FILE / PROJECTS MENU */}
             <div className="relative group" onMouseLeave={() => setActiveMenu(null)}>
               <button 
                 onMouseEnter={() => setActiveMenu('file')}
                 className="px-3 py-1.5 rounded-md hover:bg-slate-card text-slate-text transition-colors flex items-center gap-1 text-sm font-medium"
               >
-                File
+                {user ? "Projects" : "File"}
                 {needsSave && <span className="w-2 h-2 rounded-full bg-synth-pink shadow-[0_0_5px_rgba(255,0,255,0.8)] ml-1 animate-pulse" title="You have unsaved changes!" />}
               </button>
               <AnimatePresence>
@@ -126,18 +154,35 @@ export function TopBar() {
                     initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={{ duration: 0.1 }}
                     className="absolute top-full left-0 w-48 bg-slate-card border border-slate-border rounded-xl shadow-2xl z-50 py-2"
                   >
-                    <button onClick={() => { setShowNewWarning(true); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-white">
-                      <Plus className="w-4 h-4 text-synth-cyan" /> New Script
-                    </button>
+                    {user && (
+                      <button onClick={async () => { 
+                        if (user && needsSave) await handleSaveToCloud();
+                        setView('dashboard'); 
+                        setActiveMenu(null); 
+                      }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-white">
+                        <Film className="w-4 h-4 text-synth-purple" /> Projects Home
+                      </button>
+                    )}
+                    {!user && (
+                      <button onClick={() => { setShowNewWarning(true); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-white">
+                        <Plus className="w-4 h-4 text-synth-cyan" /> New Script
+                      </button>
+                    )}
                     <div className="h-px bg-slate-border my-1" />
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
-                      <FileUp className="w-4 h-4 text-slate-400" /> Open .slate
-                    </button>
+                    
+                    {user && (
+                      <button onClick={handleSaveToCloud} disabled={isSavingCloud} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
+                        <Save className="w-4 h-4 text-synth-purple" /> {isSavingCloud ? 'Saving...' : 'Save to Cloud'}
+                      </button>
+                    )}
+                    {!user && (
+                      <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
+                        <FileUp className="w-4 h-4 text-slate-400" /> Import .slate
+                      </button>
+                    )}
+                    
                     <button onClick={handleSaveSlate} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
                       <Save className="w-4 h-4 text-synth-pink" /> Save .slate
-                    </button>
-                    <button onClick={() => { exportToPDF(metadata, blocks); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
-                      <Download className="w-4 h-4 text-slate-400" /> Export PDF
                     </button>
                   </motion.div>
                 )}
@@ -183,26 +228,21 @@ export function TopBar() {
                     initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={{ duration: 0.1 }}
                     className="absolute top-full left-0 w-64 bg-slate-card border border-slate-border rounded-xl shadow-2xl z-50 py-2"
                   >
-                    <button onClick={() => { setShowMeta(true); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
-                      <FileIcon className="w-4 h-4 text-synth-cyan" /> Title Page
+                    <button onClick={async () => { 
+                      if (user && needsSave) await handleSaveToCloud();
+                      useSlateStore.getState().setShowScriptSetup(true); 
+                      setActiveMenu(null); 
+                    }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
+                      <Settings className="w-4 h-4 text-synth-cyan" /> Script Setup
                     </button>
-                    <div className="px-4 py-2 flex items-center gap-3 text-sm text-slate-text hover:bg-slate-border group/wm cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <Settings className="w-4 h-4 text-slate-400" />
-                      <div className="flex-1">
-                        Watermark
-                        <input 
-                          type="text" 
-                          placeholder="e.g. CONFIDENTIAL"
-                          value={metadata.watermark || ''}
-                          onChange={(e) => setMetadata({ watermark: e.target.value })}
-                          className="w-full mt-1 px-2 py-1 bg-slate-bg border border-slate-border rounded text-xs focus:outline-none focus:border-synth-cyan text-white"
-                        />
-                      </div>
-                    </div>
                     <div className="h-px bg-slate-border my-1" />
                     <button onClick={() => { toggleAutoScroll(); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center justify-between text-slate-text">
                       <span className="flex items-center gap-3"><Settings className="w-4 h-4 text-slate-400" /> Auto-scroll</span>
                       <span className={`text-xs ${autoScroll ? 'text-synth-cyan' : 'text-slate-muted'}`}>{autoScroll ? 'ON' : 'OFF'}</span>
+                    </button>
+                    <button onClick={() => { useSlateStore.getState().setSpellCheck(!useSlateStore.getState().spellCheck); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center justify-between text-slate-text">
+                      <span className="flex items-center gap-3"><Type className="w-4 h-4 text-slate-400" /> Spellcheck</span>
+                      <span className={`text-xs ${useSlateStore.getState().spellCheck ? 'text-synth-cyan' : 'text-slate-muted'}`}>{useSlateStore.getState().spellCheck ? 'ON' : 'OFF'}</span>
                     </button>
                     <button onClick={() => { setShowTypeColors(!showTypeColors); setActiveMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center justify-between text-slate-text">
                       <span className="flex items-center gap-3"><Type className="w-4 h-4 text-slate-400" /> Type Colors</span>
@@ -216,6 +256,54 @@ export function TopBar() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* EXPORT MENU */}
+            <div className="relative group" onMouseLeave={() => setActiveMenu(null)}>
+              <button 
+                onMouseEnter={() => setActiveMenu('export')}
+                className="px-3 py-1.5 rounded-md hover:bg-slate-card text-slate-text transition-colors flex items-center gap-1 text-sm font-medium"
+              >
+                Export
+              </button>
+              <AnimatePresence>
+                {activeMenu === 'export' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} transition={{ duration: 0.1 }}
+                    className="absolute top-full left-0 w-48 bg-slate-card border border-slate-border rounded-xl shadow-2xl z-50 py-2"
+                  >
+                    <button onClick={async () => { 
+                      if (user && needsSave) await handleSaveToCloud();
+                      exportToPDF(metadata, blocks); 
+                      setActiveMenu(null); 
+                    }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
+                      <Download className="w-4 h-4 text-synth-pink" /> Export as PDF
+                    </button>
+                    <button onClick={async () => { 
+                      if (user && needsSave) await handleSaveToCloud();
+                      const text = blocks.map(b => b.content).join('\n\n');
+                      const blob = new Blob([text], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${metadata.title || 'script'}_v${metadata.version || 1}.txt`;
+                      a.click();
+                      setActiveMenu(null); 
+                    }} className="w-full text-left px-4 py-2 hover:bg-slate-border text-sm flex items-center gap-3 text-slate-text">
+                      <FileText className="w-4 h-4 text-synth-cyan" /> Export as Plain Text
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            {!user && (
+              <button 
+                onClick={() => setView('welcome')}
+                className="px-3 py-1.5 ml-2 rounded-md bg-synth-purple/20 text-synth-purple border border-synth-purple/30 hover:bg-synth-purple hover:text-white transition-colors text-sm font-medium shadow-[0_0_10px_rgba(176,38,255,0.2)]"
+              >
+                Log In
+              </button>
+            )}
             
             <input type="file" accept=".slate" ref={fileInputRef} onChange={handleLoadSlate} className="hidden" />
           </div>
@@ -224,14 +312,11 @@ export function TopBar() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowTutorial(true)}
-            className="w-7 h-7 rounded-full bg-slate-bg border border-slate-border flex items-center justify-center text-slate-muted hover:text-synth-cyan hover:border-synth-cyan transition-colors"
+            className={`w-7 h-7 rounded-full bg-slate-bg border border-slate-border flex items-center justify-center text-slate-muted hover:text-synth-cyan hover:border-synth-cyan transition-colors ${blocks.length === 0 ? 'animate-pulse ring-2 ring-synth-cyan/50 text-synth-cyan' : ''}`}
             title="Help / Tutorial"
           >
             ?
           </button>
-          <div className="text-[10px] text-synth-cyan px-2 py-1 bg-synth-cyan/10 border border-synth-cyan/20 rounded font-medium tracking-wide">
-            SAVED TO BROWSER
-          </div>
           <div className="flex items-center gap-4 text-xs font-mono text-slate-muted bg-slate-card px-3 py-1.5 rounded-full border border-slate-border shadow-inner">
             <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> {pages} Pgs</span>
             <span className="w-1 h-1 rounded-full bg-slate-muted" />
@@ -246,10 +331,10 @@ export function TopBar() {
             <h2 className="text-xl font-bold text-white mb-2">Start New Script?</h2>
             <p className="text-sm text-slate-400 mb-6">This will erase your current script. Would you like to save it as a .slate file first?</p>
             <div className="flex flex-col gap-2">
-              <button onClick={() => { handleSaveSlate(); clearScript(); useSlateStore.temporal.getState().clear(); setShowNewWarning(false); }} className="w-full px-4 py-2 bg-synth-cyan/20 text-synth-cyan border border-synth-cyan/50 rounded-lg hover:bg-synth-cyan/30 transition-colors font-medium text-sm">
-                Save & Clear
+              <button onClick={() => { handleSaveSlate(); clearScript(); setCurrentProjectId(null); useSlateStore.temporal.getState().clear(); setShowNewWarning(false); setShowScriptSetup(true); }} className="w-full px-4 py-2 bg-synth-cyan/20 text-synth-cyan border border-synth-cyan/50 rounded-lg hover:bg-synth-cyan/30 transition-colors font-medium text-sm">
+                Save .slate & Clear
               </button>
-              <button onClick={() => { clearScript(); useSlateStore.temporal.getState().clear(); setShowNewWarning(false); }} className="w-full px-4 py-2 bg-slate-bg border border-synth-pink/50 text-synth-pink rounded-lg hover:bg-synth-pink/10 transition-colors font-medium text-sm">
+              <button onClick={() => { clearScript(); setCurrentProjectId(null); useSlateStore.temporal.getState().clear(); setShowNewWarning(false); setShowScriptSetup(true); }} className="w-full px-4 py-2 bg-slate-bg border border-synth-pink/50 text-synth-pink rounded-lg hover:bg-synth-pink/10 transition-colors font-medium text-sm">
                 Clear Without Saving
               </button>
               <button onClick={() => setShowNewWarning(false)} className="w-full px-4 py-2 text-slate-400 hover:text-white transition-colors font-medium text-sm mt-2">
@@ -260,29 +345,66 @@ export function TopBar() {
         </div>
       )}
 
-      {showMeta && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center">
-          <div className="bg-slate-card rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-border text-slate-text">
-            <h2 className="text-xl font-bold text-white mb-4">Title Page Metadata</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Title</label>
-                <input 
-                  type="text" 
-                  value={metadata.title}
-                  onChange={(e) => setMetadata({ title: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan font-medium text-white transition-colors"
-                />
+      {showScriptSetup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center overflow-y-auto py-10">
+          <div className="bg-slate-card rounded-xl shadow-2xl w-full max-w-lg p-6 border border-slate-border text-slate-text my-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-synth-cyan" />
+                Script Setup
+              </h2>
+              <button onClick={() => {
+                setShowScriptSetup(false);
+                if (user) handleSaveToCloud();
+              }} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Title</label>
+                  <input 
+                    type="text" 
+                    value={metadata.title}
+                    onChange={(e) => setMetadata({ title: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan font-medium text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Version</label>
+                  <input 
+                    type="number" 
+                    value={metadata.version || 1}
+                    onChange={(e) => setMetadata({ version: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Author</label>
-                <input 
-                  type="text" 
-                  value={metadata.author}
-                  onChange={(e) => setMetadata({ author: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
-                />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Author</label>
+                  <input 
+                    type="text" 
+                    value={metadata.author}
+                    onChange={(e) => setMetadata({ author: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Based On</label>
+                  <input 
+                    type="text" 
+                    value={metadata.basedOn || ''}
+                    onChange={(e) => setMetadata({ basedOn: e.target.value })}
+                    placeholder="e.g. A true story"
+                    className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
+                  />
+                </div>
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Cover Image</label>
                 <input 
@@ -292,8 +414,34 @@ export function TopBar() {
                     const file = e.target.files?.[0];
                     if (file) {
                       const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setMetadata({ coverImage: reader.result as string });
+                      reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          const MAX_WIDTH = 800;
+                          const MAX_HEIGHT = 1000;
+                          let width = img.width;
+                          let height = img.height;
+
+                          if (width > height) {
+                            if (width > MAX_WIDTH) {
+                              height *= MAX_WIDTH / width;
+                              width = MAX_WIDTH;
+                            }
+                          } else {
+                            if (height > MAX_HEIGHT) {
+                              width *= MAX_HEIGHT / height;
+                              height = MAX_HEIGHT;
+                            }
+                          }
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          ctx?.drawImage(img, 0, 0, width, height);
+                          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                          setMetadata({ coverImage: dataUrl });
+                        };
+                        img.src = event.target?.result as string;
                       };
                       reader.readAsDataURL(file);
                     }
@@ -307,16 +455,7 @@ export function TopBar() {
                   </div>
                 )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Based On</label>
-                <input 
-                  type="text" 
-                  value={metadata.basedOn || ''}
-                  onChange={(e) => setMetadata({ basedOn: e.target.value })}
-                  placeholder="e.g. A true story"
-                  className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
-                />
-              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Draft Number</label>
@@ -337,6 +476,18 @@ export function TopBar() {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Watermark</label>
+                <input 
+                  type="text" 
+                  value={metadata.watermark || ''}
+                  placeholder="e.g. CONFIDENTIAL"
+                  onChange={(e) => setMetadata({ watermark: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-bg border border-slate-border rounded-lg focus:outline-none focus:border-synth-cyan text-white transition-colors"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Revisions</label>
                 <textarea 
@@ -346,6 +497,7 @@ export function TopBar() {
                   placeholder="Blue Rev. - MM/DD/YYYY&#10;Pink Rev. - MM/DD/YYYY"
                 />
               </div>
+              
               <div>
                 <label className="block text-xs font-medium text-slate-muted uppercase tracking-wider mb-1">Contact Info</label>
                 <textarea 
@@ -356,12 +508,16 @@ export function TopBar() {
                 />
               </div>
             </div>
+            
             <div className="mt-6 flex justify-end">
               <button 
-                onClick={() => setShowMeta(false)}
+                onClick={() => {
+                  setShowScriptSetup(false);
+                  if (user) handleSaveToCloud();
+                }}
                 className="px-4 py-2 bg-synth-purple text-white rounded-lg hover:bg-synth-pink transition-colors font-medium text-sm shadow-[0_0_15px_rgba(176,38,255,0.4)]"
               >
-                Done
+                Save & Close
               </button>
             </div>
           </div>
@@ -376,7 +532,7 @@ export function TopBar() {
           <div>
             <h3 className="text-white text-sm font-bold mb-1">Unsaved Changes</h3>
             <p className="text-slate-muted text-xs leading-relaxed mb-3">
-              The pink dot means you have unsaved work. Your script is saved to your browser, but don't forget to save a .slate file backup!
+              The pink dot means you have unsaved work. {user ? "Your script is saved to your browser, but don't forget to Save to Cloud to sync!" : "Your script is saved to your browser, but don't forget to save a .slate file backup!"}
             </p>
             <button onClick={() => setShowSavePopup(false)} className="text-xs bg-slate-bg border border-slate-border px-3 py-1.5 rounded text-white hover:text-synth-cyan transition-colors">
               Got it
