@@ -2,8 +2,21 @@ import React, { useEffect } from 'react';
 import { useAuthStore } from '../lib/auth';
 import { useSlateStore } from '../store';
 import { auth, googleProvider, signInWithPopup } from '../lib/firebase';
-import { Film, User, ChevronRight, PenTool, Layout, Lock, Cloud, Zap, Download, Heart, Star } from 'lucide-react';
+import { Film, User, ChevronRight, PenTool, Layout, Lock, Cloud, Zap, Download, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+};
 
 export function WelcomeScreen() {
   const { user, loading } = useAuthStore();
@@ -33,148 +46,176 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-bg flex flex-col font-sans text-slate-text overflow-y-auto custom-scrollbar">
-      {/* Navigation */}
-      <nav className="w-full max-w-6xl mx-auto px-6 py-8 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <Film className="w-8 h-8 text-synth-purple" />
-          <span className="text-2xl font-bold text-white tracking-tighter">SimpleSlate</span>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-slate-bg flex flex-col font-sans text-slate-text overflow-y-auto custom-scrollbar relative overflow-hidden">
+      
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }} 
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-[20%] -left-[10%] w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-synth-purple/20 blur-[120px] rounded-full mix-blend-screen"
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} 
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute top-[20%] -right-[10%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-synth-cyan/15 blur-[100px] rounded-full mix-blend-screen"
+        />
+        <motion.div 
+          animate={{ y: [0, -50, 0], opacity: [0.05, 0.1, 0.05] }} 
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -bottom-[20%] left-[20%] w-[70vw] h-[70vw] max-w-[700px] max-h-[700px] bg-synth-pink/20 blur-[120px] rounded-full mix-blend-screen"
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+      </div>
 
-      {/* Hero Section */}
-      <main className="flex-1 w-full flex flex-col items-center">
-        <section className="w-full max-w-6xl mx-auto px-6 pt-12 pb-20 flex flex-col items-center text-center">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-synth-cyan/10 border border-synth-cyan/20 text-synth-cyan text-xs font-bold uppercase tracking-widest mb-8">
-              <Star className="w-3.5 h-3.5" /> 100% Free Screenwriting Software
+      <div className="relative z-10 w-full flex flex-col items-center">
+        {/* Navigation */}
+        <motion.nav 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-synth-cyan to-synth-purple rounded-xl flex items-center justify-center shadow-lg shadow-synth-cyan/20">
+              <Film className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tighter leading-tight mb-6">
-              Write your screenplay.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-synth-cyan via-synth-purple to-synth-pink">Without the friction.</span>
-            </h1>
-            <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-              SimpleSlate is a radically simple, totally free screenwriting editor. 
-              No paywalls, no subscriptions, and no complicated menus. Just a clean interface designed by writers, for writers, to keep you in the creative flow.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-lg mx-auto">
-              <button 
+            <span className="text-xl font-black text-white tracking-tight">Simple<span className="text-synth-cyan">Slate</span></span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+          </div>
+        </motion.nav>
+
+        {/* Hero Section */}
+        <main className="w-full flex-grow flex flex-col items-center justify-center py-20 px-6 max-w-7xl mx-auto">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="text-center max-w-4xl mx-auto flex flex-col items-center z-10"
+          >
+            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-card/80 border border-synth-cyan/30 text-synth-cyan text-sm font-medium mb-8 backdrop-blur-md shadow-[0_0_15px_rgba(0,255,255,0.1)]">
+              <Sparkles className="w-4 h-4" />
+              <span>The future of screenwriting is here</span>
+            </motion.div>
+            
+            <motion.h1 variants={itemVariants} className="text-6xl md:text-8xl font-black text-white leading-tight mb-8 tracking-tighter">
+              Write Scripts. <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-synth-cyan via-synth-purple to-synth-pink">Without Distractions.</span>
+            </motion.h1>
+            
+            <motion.p variants={itemVariants} className="text-xl md:text-2xl text-slate-300 mb-12 max-w-2xl leading-relaxed">
+              SimpleSlate is a radically minimal, offline-capable screenwriting environment designed for pure focus and creative flow.
+            </motion.p>
+            
+            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleLogin}
-                className="w-full py-4 px-6 bg-synth-purple text-white rounded-xl font-bold hover:bg-synth-pink transition-colors shadow-[0_0_25px_rgba(176,38,255,0.4)] hover:shadow-[0_0_35px_rgba(255,38,255,0.6)] flex items-center justify-center gap-2 text-lg"
+                className="w-full sm:w-auto py-4 px-10 bg-white text-slate-900 rounded-full font-bold transition-all shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:shadow-[0_0_40px_rgba(255,255,255,0.5)] flex items-center justify-center gap-2 text-lg group"
               >
                 <User className="w-5 h-5" />
-                Sign Up / Login for Free
-              </button>
-              <button 
+                Start Writing (Login)
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+              
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleGuest}
-                className="w-full py-4 px-6 bg-slate-card border border-slate-border text-white rounded-xl font-bold hover:border-synth-cyan transition-colors flex items-center justify-center gap-2 text-lg"
+                className="w-full sm:w-auto py-4 px-10 bg-slate-card/50 backdrop-blur-md border border-slate-border text-white rounded-full font-bold hover:bg-slate-card hover:border-synth-cyan transition-all flex items-center justify-center gap-2 text-lg"
               >
-                Continue as Guest
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mt-5">
-              * Logging in gives you free cloud storage for your projects. Guest mode saves everything locally to your browser.
-            </p>
+                Start Writing (Guest)
+              </motion.button>
+            </motion.div>
+            
+            <motion.p variants={itemVariants} className="text-sm text-slate-500 mt-6">
+              100% Free forever. No trials, no paywalls, just writing.
+            </motion.p>
           </motion.div>
-        </section>
+        </main>
+      </div>
 
-        {/* The Mission Section */}
-        <section className="w-full bg-slate-card/30 border-y border-slate-border py-24">
-          <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Why we built SimpleSlate.</h2>
-            <div className="space-y-6 text-lg text-slate-300 leading-relaxed max-w-3xl mx-auto text-left md:text-center">
-              <p>
-                We believe that storytelling should be accessible to everyone. The industry standard screenwriting software is notoriously expensive, often costing hundreds of dollars or locking you into monthly subscriptions just to type words on a page.
-              </p>
-              <p>
-                <strong>We wanted completely free software to write scripts.</strong> No trials. No premium tiers. No watermarks on your PDFs unless you put them there. 
-              </p>
-              <p>
-                SimpleSlate was built to strip away the clutter. It focuses purely on the creative work, giving you an intuitive, lightning-fast, distraction-free environment to get your story out of your head and onto the page.
-              </p>
-            </div>
+      {/* Feature Showcase Grid */}
+      <div id="features" className="relative z-10 w-full bg-slate-bg/80 backdrop-blur-xl border-y border-slate-border">
+        <div className="max-w-7xl mx-auto px-6 py-32">
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7 }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">Everything you need. <br/><span className="text-synth-purple">Nothing you don't.</span></h2>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">We stripped away the complex menus and clutter so you can focus entirely on your story.</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { icon: PenTool, title: "Fountain Syntax", desc: "Write in standard text. We automatically format it to industry standard screenplays.", color: "text-synth-cyan", bg: "bg-synth-cyan/10" },
+              { icon: Layout, title: "Distraction Free", desc: "Enter focus mode to hide everything except your words on the page.", color: "text-synth-pink", bg: "bg-synth-pink/10" },
+              { icon: Zap, title: "Lightning Fast", desc: "Built on modern web tech. SimpleSlate loads instantly and never lags.", color: "text-yellow-400", bg: "bg-yellow-400/10" },
+              { icon: Lock, title: "Offline First", desc: "Lose your connection? No problem. Keep writing and we'll sync when you're back.", color: "text-green-400", bg: "bg-green-400/10" },
+              { icon: Cloud, title: "Cloud Sync", desc: "Access your scripts from any device, anywhere in the world, securely.", color: "text-blue-400", bg: "bg-blue-400/10" },
+              { icon: Download, title: "PDF Export", desc: "One click export to an industry-standard PDF, ready to send to producers.", color: "text-synth-purple", bg: "bg-synth-purple/10" }
+            ].map((feature, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                whileHover={{ y: -10, scale: 1.02 }}
+                className="bg-slate-card/40 backdrop-blur-md border border-slate-border hover:border-slate-600 rounded-2xl p-8 transition-all group shadow-lg"
+              >
+                <div className={`w-14 h-14 rounded-xl ${feature.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <feature.icon className={`w-7 h-7 ${feature.color}`} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                <p className="text-slate-400 leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* Feature Grid */}
-        <section className="w-full max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Everything you need. Nothing you don't.</h2>
-            <p className="text-slate-400">Professional tools built into a minimalist interface.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-synth-cyan transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-synth-cyan/10 flex items-center justify-center mb-6 group-hover:bg-synth-cyan/20 transition-colors">
-                <Zap className="w-7 h-7 text-synth-cyan" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Smart Auto-Formatting</h3>
-              <p className="text-slate-400 leading-relaxed">Focus on the story. SimpleSlate automatically detects scene headings, characters, and dialogue as you type based on industry standards.</p>
-            </div>
-            
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-synth-purple transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-synth-purple/10 flex items-center justify-center mb-6 group-hover:bg-synth-purple/20 transition-colors">
-                <Cloud className="w-7 h-7 text-synth-purple" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Free Cloud Sync</h3>
-              <p className="text-slate-400 leading-relaxed">Create a free account to securely back up your projects in the cloud. Access your scripts from any device, anywhere, instantly.</p>
-            </div>
-            
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-synth-pink transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-synth-pink/10 flex items-center justify-center mb-6 group-hover:bg-synth-pink/20 transition-colors">
-                <Download className="w-7 h-7 text-synth-pink" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Standard Export</h3>
-              <p className="text-slate-400 leading-relaxed">Generate perfect, industry-standard PDFs ready for production. Add title pages, cover images, and watermarks effortlessly.</p>
-            </div>
-
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-slate-300 transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-6 group-hover:bg-slate-600 transition-colors">
-                <Layout className="w-7 h-7 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Distraction-Free</h3>
-              <p className="text-slate-400 leading-relaxed">Toggle Focus Mode to hide all UI elements and immerse yourself completely in your script. Just you and the cursor.</p>
-            </div>
-
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-slate-300 transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-6 group-hover:bg-slate-600 transition-colors">
-                <Lock className="w-7 h-7 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Privacy First</h3>
-              <p className="text-slate-400 leading-relaxed">Guest mode keeps your data entirely within your browser. Even with an account, your scripts remain private and secure.</p>
-            </div>
-
-            <div className="bg-slate-card/80 p-8 rounded-3xl border border-slate-border text-left hover:border-slate-300 transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-slate-700/50 flex items-center justify-center mb-6 group-hover:bg-slate-600 transition-colors">
-                <PenTool className="w-7 h-7 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Built for Speed</h3>
-              <p className="text-slate-400 leading-relaxed">Navigate entirely via keyboard shortcuts. Drag and drop scenes to reorder. Attach sticky notes to blocks for rapid revisions.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer CTA */}
-        <section className="w-full bg-gradient-to-b from-slate-bg to-slate-card border-t border-slate-border py-20 text-center">
-          <div className="max-w-3xl mx-auto px-6">
-            <h2 className="text-3xl font-bold text-white mb-8">Ready to write your next masterpiece?</h2>
-            <button 
-              onClick={handleGuest}
-              className="py-4 px-10 bg-white text-slate-900 rounded-full font-bold hover:bg-slate-200 transition-colors shadow-xl text-lg inline-flex items-center gap-2"
-            >
-              Start Writing Now <ChevronRight className="w-5 h-5" />
-            </button>
-            <div className="mt-16 flex items-center justify-center gap-2 text-sm text-slate-500">
-              Made with <Heart className="w-4 h-4 text-synth-pink" /> by writers, for writers.
-            </div>
-          </div>
-        </section>
-      </main>
+      {/* Final CTA */}
+      <div className="relative z-10 w-full py-32 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-card/50"></div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="relative max-w-4xl mx-auto px-6 text-center"
+        >
+          <h2 className="text-5xl font-black text-white mb-8">Ready to start?</h2>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleLogin}
+            className="py-5 px-12 bg-gradient-to-r from-synth-cyan to-synth-purple text-white rounded-full font-bold text-xl shadow-[0_0_40px_rgba(176,38,255,0.4)] hover:shadow-[0_0_60px_rgba(0,255,255,0.6)] transition-all"
+          >
+            Start Writing Now
+          </motion.button>
+        </motion.div>
+      </div>
+      
+      {/* SEO Footer */}
+      <footer className="relative z-10 w-full bg-slate-bg border-t border-slate-border py-12 text-center text-slate-500 text-sm">
+        <div className="max-w-4xl mx-auto px-6">
+          <p className="mb-4">
+            SimpleSlate is a <strong>free screenwriting software</strong> designed for maximum focus. 
+            Whether you are writing a movie, a TV pilot, or a short film, our <strong>minimalist script writing app</strong> 
+            helps you format your screenplay to industry standards automatically using Fountain syntax.
+          </p>
+          <p>
+            No subscriptions, no paywalls, just a clean, offline-capable environment to write your next masterpiece.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

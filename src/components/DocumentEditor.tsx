@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSlateStore } from '../store';
-import { Reorder, useDragControls } from 'motion/react';
+import { Reorder, useDragControls, motion, AnimatePresence } from 'motion/react';
 import { GripVertical, X, Plus, StickyNote } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ScriptBlock } from '../types';
@@ -43,6 +43,9 @@ function BlockItem({ block, index }: { key?: string; block: ScriptBlock; index: 
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const typeOptions = ['scene', 'action', 'character', 'dialogue', 'parenthetical', 'transition', 'shot'];
+  const [hasSeenHint, setHasSeenHint] = useState(() => localStorage.getItem('hasSeenTypeDropdownHint') === 'true');
 
   useEffect(() => {
     if (textAreaRef.current) {

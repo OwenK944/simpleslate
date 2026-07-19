@@ -1,10 +1,34 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronDown } from 'lucide-react';
 import { useSlateStore } from '../store';
 import { cn } from '../lib/utils';
 import { User, MapPin, AlignLeft, Clock, MessageSquare, Activity } from 'lucide-react';
 
 export function SidebarRight() {
-  const { blocks, selectedBlockId, focusMode } = useSlateStore();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const blockTypes = ['scene', 'action', 'character', 'dialogue', 'parenthetical', 'transition', 'shot'];
+  const typeLabels: Record<string, string> = {
+    scene: 'Scene Heading',
+    action: 'Action',
+    character: 'Character',
+    dialogue: 'Dialogue',
+    parenthetical: 'Parenthetical',
+    transition: 'Transition',
+    shot: 'Shot'
+  };
+  const { blocks, selectedBlockId, focusMode, updateBlock } = useSlateStore();
 
   if (focusMode) return null;
 
@@ -88,9 +112,56 @@ export function SidebarRight() {
           <div className="space-y-6">
             <div>
               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Block Type</div>
-              <div className="text-xs font-medium text-white capitalize bg-slate-card px-2 py-1 rounded border border-slate-border inline-flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-synth-cyan"></span>
-                {selectedBlock.type}
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full flex items-center justify-between text-xs font-medium text-white capitalize bg-slate-card px-3 py-2.5 rounded-md border border-slate-border focus:outline-none focus:border-synth-cyan cursor-pointer transition-colors hover:bg-slate-bg/80"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "w-2 h-2 rounded-full",
+                      selectedBlock.type === 'scene' ? 'bg-synth-cyan' :
+                      selectedBlock.type === 'action' ? 'bg-slate-300' :
+                      selectedBlock.type === 'character' ? 'bg-synth-purple' :
+                      selectedBlock.type === 'dialogue' ? 'bg-gray-100' :
+                      selectedBlock.type === 'parenthetical' ? 'bg-slate-400' :
+                      selectedBlock.type === 'transition' ? 'bg-synth-pink' :
+                      selectedBlock.type === 'shot' ? 'bg-cyan-200' : 'bg-synth-cyan'
+                    )}></span>
+                    {typeLabels[selectedBlock.type] || selectedBlock.type}
+                  </div>
+                  <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", isDropdownOpen && "rotate-180 text-synth-cyan")} />
+                </button>
+                
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
+                      className="absolute top-full left-0 mt-2 w-full bg-slate-card border border-slate-border rounded-md shadow-2xl z-50 py-1 overflow-hidden"
+                    >
+                      {blockTypes.map(t => (
+                        <button 
+                          key={t} 
+                          onClick={() => { updateBlock(selectedBlock.id, { type: t as any }); setIsDropdownOpen(false); }} 
+                          className="w-full text-left px-3 py-2 hover:bg-slate-bg/80 text-xs font-medium text-slate-300 capitalize flex items-center gap-2 transition-colors"
+                        >
+                          <span className={cn(
+                            "w-2 h-2 rounded-full",
+                            t === 'scene' ? 'bg-synth-cyan' :
+                            t === 'action' ? 'bg-slate-300' :
+                            t === 'character' ? 'bg-synth-purple' :
+                            t === 'dialogue' ? 'bg-gray-100' :
+                            t === 'parenthetical' ? 'bg-slate-400' :
+                            t === 'transition' ? 'bg-synth-pink' :
+                            t === 'shot' ? 'bg-cyan-200' : 'bg-synth-cyan',
+                            selectedBlock.type !== t && "opacity-40"
+                          )}></span>
+                          <span className={selectedBlock.type === t ? "text-white" : ""}>{typeLabels[t]}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                                </AnimatePresence>
               </div>
             </div>
 
